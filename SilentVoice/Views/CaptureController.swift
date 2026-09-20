@@ -85,6 +85,7 @@ struct CaptureStatusOverlay: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title). \(subtitle)")
+        .allowsHitTesting(false) // Keep the preview's face overlay toggle usable during capture.
     }
 }
 

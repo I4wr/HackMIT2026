@@ -36,6 +36,20 @@ decodable but are excluded by the app's `captureSource` filter.
 
 ### Live diagnostics
 
+Both camera previews show cyan face-mesh lines and vertex dots, enabled by
+default. The face icon in the preview's upper-right corner toggles the overlay;
+VoiceOver names it **Face overlay** and announces its on/off state. The preference
+persists across screens and launches. The existing countdown/recording dimming
+stays visible, and the toggle remains usable beneath it.
+
+These points visualize ARKit's estimated face geometry, not individual depth
+pixels or anatomically labelled landmarks. Geometry follows live face-anchor
+updates independently of the diagnostics panel, and does not require a delivered
+raw depth map. A depth-only face surface hides far-side points. Tracking loss,
+interruption or a stopped session hides the overlay; reacquisition restores it.
+The display shares the existing AR session and never changes saved RGB, depth,
+features or classifier inputs.
+
 Both Calibration and Recognition show a Live readings panel below the preview,
 including eight mouth-movement bars, colour-camera dimensions, delivered frame
 rate, camera-to-face distance, and depth availability. Expand **Depth, mesh & head
@@ -161,6 +175,13 @@ Physical-device acceptance:
 7. Record validation/test data in later sessions; training counts must not change.
    Measure per-phrase accuracy and false triggers. Keep final test sessions
    untouched while tuning thresholds.
+8. Check mesh/dot alignment in both previews and supported orientations while
+   smiling, blinking, opening/puckering the mouth, moving nearer/farther and
+   turning/tilting the head. Check far-side occlusion and absence of flicker.
+   Toggle before and during capture, navigate between screens and relaunch to
+   verify the preference. Lose/reacquire the face and interrupt/background the
+   app to check for frozen or duplicate meshes. Compare delivered frame rate and
+   responsiveness with the overlay on/off, especially while saving captures.
 
 No measured recognition accuracy or depth benefit is established by this change.
 Compare a blendshape baseline against RGB/mesh/depth variants on the same held-out
