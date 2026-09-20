@@ -9,6 +9,38 @@ This is an experimental pretrained lip-reading demo. Models trained on audible
 speech do not establish accuracy on silently mouthed sentences. No microphone is
 used. Calibration trains only the command classifier; it does not train this model.
 
+## Running the app
+
+1. Start the local model in Terminal:
+
+    cd /Users/brianhuang/repos4/hackmitproject
+    SILENTVOICE_DEVICE=cpu bash Scripts/run-local-inference.sh
+
+    CPU mode avoids the GPU fallback issue recorded for this setup. Leave this terminal running.
+
+2. Check readiness in another terminal:
+
+    curl http://localhost:8000/health
+
+    Wait until it returns "ready": true.
+
+3. Run the iPhone app:
+    - Open SilentVoice.xcodeproj in Xcode.
+    - Connect and trust your TrueDepth-capable iPhone.
+    - Select your team under Signing & Capabilities.
+    - Select your iPhone as the run destination and press ⌘R.
+
+    The simulator cannot capture TrueDepth face tracking.
+
+4. Connect the app to the model:
+    - Connect your Mac and iPhone to the same Wi-Fi.
+    - Open Start silent speech → Sentences → Mac connection.
+    - Hostname: Brians-MacBook-Air.local
+    - Port: 8000
+    - Tap Test Connection and allow Local Network access.
+
+Then tap Record sentence, mouth your sentence, tap Stop recording, review the transcript, and tap Speak.
+
 ## Mac setup
 
 Use an Apple Silicon Mac with macOS 14 or later, Python 3.12, and roughly 5 GB free disk space. The locked
