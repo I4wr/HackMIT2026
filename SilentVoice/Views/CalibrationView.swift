@@ -2,18 +2,27 @@ import SwiftUI
 
 struct CalibrationView: View {
     @EnvironmentObject private var viewModel: AppViewModel
+
+    var body: some View {
+        CalibrationScreen(tracker: viewModel.tracker)
+    }
+}
+
+private struct CalibrationScreen: View {
+    @EnvironmentObject private var viewModel: AppViewModel
+    @ObservedObject var tracker: FaceTracker
     @StateObject private var capture = CaptureController()
     @State private var selectedPhrase = PhraseCatalog.words[0]
     @State private var captureTask: Task<Void, Never>?
     @State private var datasetSplit = "training"
     @State private var savedMessage: String?
+    @State private var captureMessage: String?
+    @State private var captureIsError = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                FaceCameraView()
-                    .frame(height: 240)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                cameraPreview
                 FaceDiagnosticsView(tracker: viewModel.tracker)
                 Text("Word to mouth")
                     .font(.headline)
@@ -38,6 +47,12 @@ struct CalibrationView: View {
                     Text(savedMessage).font(.footnote).foregroundStyle(.secondary)
                 }
 
+                if let message = captureMessage {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(captureIsError ? Color.red : Color.secondary)
+                }
+
                 if let message = viewModel.lastErrorMessage {
                     Text(message)
                         .font(.footnote)
@@ -51,7 +66,7 @@ struct CalibrationView: View {
             VStack(spacing: 12) {
                 RecordButton(
                     title: "Record",
-                    isEnabled: !capture.phase.isBusy
+                    isEnabled: canRecord
                 ) {
                     beginCapture(replacingLast: false)
                 }
@@ -73,8 +88,30 @@ struct CalibrationView: View {
         }
     }
 
+    private var canRecord: Bool {
+        guard !capture.phase.isBusy else { return false }
+        switch tracker.status {
+        case .permissionDenied, .requestingPermission, .failed(_):
+            return false
+        default:
+            return true
+        }
+    }
+
     private var examplesForSelectedPhrase: [MouthSample] {
         viewModel.samples.filter { $0.label == selectedPhrase }
+    }
+
+    private var cameraPreview: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            FaceCameraView()
+                .frame(height: 240)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+
+            Text("Face the camera, then mouth the selected phrase.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private var progressSection: some View {
@@ -136,6 +173,8 @@ struct CalibrationView: View {
 
     private func beginCapture(replacingLast: Bool) {
         captureTask?.cancel()
+        captureMessage = nil
+        captureIsError = false
         captureTask = Task {
             let phrase = selectedPhrase
             let split = datasetSplit

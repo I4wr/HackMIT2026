@@ -13,6 +13,18 @@ enum CapturePhase: Equatable {
     }
 }
 
+enum CaptureOutcome: Equatable {
+    case cancelled
+    case recorded([MouthFrame])
+    case empty
+}
+
+enum ResolvedCapture: Equatable {
+    case cancelled
+    case success([MouthFrame], warning: String?)
+    case failed(String)
+}
+
 @MainActor
 final class CaptureController: ObservableObject {
     @Published private(set) var phase: CapturePhase = .idle
@@ -107,21 +119,19 @@ struct CaptureStatusOverlay: View {
         ZStack {
             Color.black.opacity(0.45)
                 .ignoresSafeArea()
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 Text(title)
-                    .font(.system(size: 72, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 64, weight: .bold, design: .rounded))
                     .monospacedDigit()
                 Text(subtitle)
                     .font(.headline)
-                    .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
             }
-            .padding()
+            .padding(24)
         }
+        .allowsHitTesting(false)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title). \(subtitle)")
-        .allowsHitTesting(false) // Keep the preview's face overlay toggle usable during capture.
     }
 }
 
