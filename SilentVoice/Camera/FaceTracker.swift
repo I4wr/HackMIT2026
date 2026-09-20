@@ -60,20 +60,25 @@ final class FaceTracker: NSObject, ObservableObject, FaceTracking, @preconcurren
     private var recording: TrueDepthRecording?
     private var recordingSessionID = UUID()
 
-    func beginRecording(label: String, datasetSplit: String = "unassigned") throws {
+    func beginRecording(label: String, datasetSplit: String = "unassigned", requiresFace: Bool = false) throws {
         guard recording == nil, isFaceDetected else {
             throw TrueDepthRecording.RecordingError.invalid("Position your face in view before recording.")
         }
-        recording = try TrueDepthRecording(label: label, sessionID: recordingSessionID, datasetSplit: datasetSplit)
+        recording = try TrueDepthRecording(label: label, sessionID: recordingSessionID, datasetSplit: datasetSplit,
+                                          requiresFace: requiresFace)
     }
 
     func finishRecording(cancelled: Bool = false) async throws -> MouthSample {
+        try await finishTake(cancelled: cancelled).sample
+    }
+
+    func finishTake(cancelled: Bool = false) async throws -> CapturedTake {
         guard let take = recording else {
             throw TrueDepthRecording.RecordingError.invalid("No recording is active.")
         }
         recording = nil
         if cancelled { take.invalidate("Recording cancelled.") }
-        return try await take.finish()
+        return CapturedTake(sample: try await take.finish(), archiveURL: take.directory)
     }
 
     override init() {

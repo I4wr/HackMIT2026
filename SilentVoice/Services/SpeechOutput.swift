@@ -1,7 +1,12 @@
 import AVFoundation
 
 @MainActor
-final class SpeechOutput {
+protocol SpeechSpeaking {
+    func speak(_ text: String)
+}
+
+@MainActor
+final class SpeechOutput: SpeechSpeaking {
     private let synthesizer = AVSpeechSynthesizer()
 
     func speak(_ text: String) {

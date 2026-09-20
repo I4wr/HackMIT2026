@@ -58,6 +58,8 @@ struct SegmentationSmokeMain {
         for item in evaluation {
             let frames = padded(item.frames, leading: 9, trailing: 4)
             let prediction = subsequence.predict(frames: frames)
+            // DTW indices address the resampled sequence (45 frames by default).
+            let processedCount = subsequence.preprocessor.process(frames).frames.count
             for candidate in prediction.candidates {
                 guard let alignment = candidate.alignment else {
                     fputs("FAIL: .subsequence candidate missing alignment\n", stderr)
@@ -68,10 +70,10 @@ struct SegmentationSmokeMain {
                     exit(1)
                 }
                 guard alignment.startIndex >= 0,
-                      alignment.endIndex < frames.count,
+                      alignment.endIndex < processedCount,
                       alignment.startIndex <= alignment.endIndex else {
                     fputs("FAIL: span out of bounds for \(candidate.label): "
-                          + "[\(alignment.startIndex)...\(alignment.endIndex)] of \(frames.count)\n", stderr)
+                          + "[\(alignment.startIndex)...\(alignment.endIndex)] of \(processedCount) processed frames\n", stderr)
                     exit(1)
                 }
                 checked += 1

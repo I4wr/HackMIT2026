@@ -15,6 +15,14 @@ xcuserdata/
 # macOS
 .DS_Store
 
+# Local inference dependencies, weights, and outputs
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+*.pth
+training/artifacts/
+
 # Local sample captures
 sample-data/*.json
 !sample-data/feature_schema.json

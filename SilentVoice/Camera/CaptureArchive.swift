@@ -1,7 +1,7 @@
 import Foundation
 
 /// The research archive is separate from the small, backwards-compatible classifier JSON.
-struct CaptureFrameMetadata: Codable, Sendable {
+nonisolated struct CaptureFrameMetadata: Codable, Sendable {
     let index: Int
     let timestamp: TimeInterval
     let depthTimestamp: TimeInterval?
@@ -25,9 +25,14 @@ struct CaptureFrameMetadata: Codable, Sendable {
     let depthAccuracy: Int?
     let depthQuality: Int?
     let deviceOrientation: Int
+    /// Optional so schema-v1 archives remain decodable. Crop is in native pixels.
+    var faceCrop: [Double]? = nil
+    var faceWidth: Int? = nil
+    var faceHeight: Int? = nil
+    var faceOrientation: Int? = nil // EXIF rotation applied to face.png; never mirrored.
 }
 
-struct DepthCalibrationMetadata: Codable, Sendable {
+nonisolated struct DepthCalibrationMetadata: Codable, Sendable {
     let intrinsics: [Float]
     let referenceWidth: Double
     let referenceHeight: Double
@@ -39,7 +44,7 @@ struct DepthCalibrationMetadata: Codable, Sendable {
     let inverseLensDistortionLookupTable: Data?
 }
 
-struct CaptureManifest: Codable, Sendable {
+nonisolated struct CaptureManifest: Codable, Sendable {
     let schemaVersion: Int
     let sampleID: UUID
     let label: String
@@ -62,6 +67,13 @@ struct CaptureManifest: Codable, Sendable {
     let depthFormat: String
     let coordinateConvention: String
     let mouthSelection: String
+    var faceFrameCount: Int? = nil
+    var faceFormat: String? = nil
+}
+
+struct CapturedTake: Sendable {
+    let sample: MouthSample
+    let archiveURL: URL
 }
 
 struct CaptureFile: Sendable {

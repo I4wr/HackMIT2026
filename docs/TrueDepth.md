@@ -14,9 +14,13 @@ Choose Training, Validation, or Test. Only successful training takes are added t
 the on-device classifier; validation and test takes remain in the archive for
 offline evaluation. Counts in the interface refer to training examples.
 
-Recognition records the same modalities with label UNLABELED and split unassigned,
-then runs the existing DTW blendshape classifier. RGB, mesh and depth are retained
-for future model comparisons; the classifier does not yet consume them.
+Command recognition records the same modalities with label UNLABELED and split
+unassigned, then runs the existing DTW blendshape classifier. Sentence recognition
+records until Stop or ten seconds, requires schema-v2 full-face PNGs, and sends
+only those images and timing metadata to the local Mac. See [Local inference](LocalInference.md).
+New archives add optional upright 256×256 `face.png` files and crop/orientation
+metadata; older schema-v1 archives remain usable for command recognition.
+RGB, mesh and depth remain archived; DTW consumes only blendshape features.
 REST/UNKNOWN samples are archived but are not templates in the existing DTW model;
 use negatives to measure false triggers and tune thresholds. Scores are
 similarities, not calibrated probabilities.

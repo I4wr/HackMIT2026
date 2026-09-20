@@ -12,6 +12,7 @@ final class AppViewModel: ObservableObject {
     let tracker: FaceTracker
     let classifier: any MouthClassifying
     let speechOutput: SpeechOutput
+    let sentences = SentenceRecognition()
     private let sampleStore: SampleStore
     private let languageModel: PhraseLanguageModel
 

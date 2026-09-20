@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "silentvoice-local"
+version = "0.1.0"
+description = "Local visual speech transcription for SilentVoice"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi==0.115.12", "uvicorn==0.34.2", "python-multipart==0.0.20",
+  "pillow==11.2.1", "numpy==1.26.4",
+]
+
+[project.optional-dependencies]
+model = [
+  "torch==2.5.1", "torchvision==0.20.1", "torchaudio==2.5.1",
+  "pytorch-lightning==2.5.1", "sentencepiece==0.2.0",
+  "mediapipe==0.10.21", "scikit-image==0.25.2",
+  "opencv-contrib-python==4.11.0.86",
+]
+test = ["pytest==8.3.5", "httpx==0.28.1"]
+
+[project.scripts]
+silentvoice-local = "silentvoice.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["silentvoice*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

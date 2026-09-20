@@ -30,6 +30,14 @@ struct CaptureSmokeMain {
         let decoded = try decoder.decode(CaptureFrameMetadata.self, from: encoder.encode(frame))
         precondition(decoded.depthTimestamp == nil && decoded.rgbWidth == 192)
         precondition(decoded.blendShapes["jawOpen"] == 0.2 && decoded.vertices.count == 1)
+        precondition(decoded.faceCrop == nil && decoded.faceOrientation == nil)
+        var faceFrame = frame
+        faceFrame.faceCrop = [100, 50, 300, 300]
+        faceFrame.faceWidth = 256
+        faceFrame.faceHeight = 256
+        faceFrame.faceOrientation = 6
+        let faceRoundTrip = try decoder.decode(CaptureFrameMetadata.self, from: encoder.encode(faceFrame))
+        precondition(faceRoundTrip.faceWidth == 256 && faceRoundTrip.faceOrientation == 6)
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

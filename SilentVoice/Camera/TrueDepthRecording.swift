@@ -2,6 +2,7 @@ import ARKit
 import AVFoundation
 import CoreImage
 import UIKit
+import ImageIO
 
 /// Only active during an explicit take. Never retain ARFrames or camera buffers.
 @MainActor
@@ -19,18 +20,21 @@ final class TrueDepthRecording {
     private let datasetSplit: String
     private let createdAt = Date()
     private let context = CIContext()
-    private let directory: URL
+    let directory: URL
+    private let requiresFace: Bool
     private var frames: [MouthFrame] = []
     private var depthFrameCount = 0
+    private var faceFrameCount = 0
     private var issues: [String] = []
     private var writes: [Task<Void, Error>] = []
     private var pendingWrites = 0
     private var mouthIndices: [Int]?
 
-    init(label: String, sessionID: UUID, datasetSplit: String) throws {
+    init(label: String, sessionID: UUID, datasetSplit: String, requiresFace: Bool = false) throws {
         self.label = label
         self.sessionID = sessionID
         self.datasetSplit = datasetSplit
+        self.requiresFace = requiresFace
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         directory = documents.appendingPathComponent("captures", isDirectory: true)
             .appendingPathComponent(id.uuidString, isDirectory: true)
@@ -43,7 +47,10 @@ final class TrueDepthRecording {
 
     func append(frame: ARFrame, face: ARFaceAnchor, features: MouthFrame) {
         // Bound memory and disk pressure. A dropped archive frame invalidates the take.
-        guard pendingWrites < 4, frames.count < 300 else {
+        // The controller stops at ten seconds. Ignore the boundary callback gracefully.
+        guard frames.count < 300,
+              frames.first.map({ features.timestamp - $0.timestamp < 10 }) ?? true else { return }
+        guard pendingWrites < 4 else {
             invalidate("Recording could not keep up with the camera. Please try again.")
             return
         }
@@ -90,6 +97,17 @@ final class TrueDepthRecording {
                 throw RecordingError.invalid("Could not encode the mouth image.")
             }
             var files = [CaptureFile(name: "rgb.png", data: rgb)]
+            var faceCrop: CGRect?
+            var faceOrientation: CGImagePropertyOrientation?
+            do {
+                let result = try encodeFace(frame: frame, face: face, cameraFromFace: cameraFromFace)
+                files.append(CaptureFile(name: "face.png", data: result.data))
+                faceCrop = result.crop
+                faceOrientation = result.orientation
+            } catch {
+                // An optional face crop must not break command calibration.
+                if requiresFace { throw error }
+            }
             var depthWidth: Int?, depthHeight: Int?, depthTimestamp: TimeInterval?
             var calibration: DepthCalibrationMetadata?
             var filtered: Bool?, accuracy: Int?, quality: Int?
@@ -119,7 +137,7 @@ final class TrueDepthRecording {
                         inverseLensDistortionLookupTable: c.inverseLensDistortionLookupTable)
                 }
             }
-            let metadata = CaptureFrameMetadata(
+            var metadata = CaptureFrameMetadata(
                 index: index, timestamp: frame.timestamp, depthTimestamp: depthTimestamp,
                 blendShapes: Dictionary(uniqueKeysWithValues: face.blendShapes.map { ($0.key.rawValue, $0.value.floatValue) }),
                 vertices: vertices.map { [$0.x, $0.y, $0.z] }, mouthVertexIndices: indices,
@@ -131,6 +149,12 @@ final class TrueDepthRecording {
                 depthWidth: depthWidth, depthHeight: depthHeight, depthCalibration: calibration,
                 depthFiltered: filtered, depthAccuracy: accuracy, depthQuality: quality,
                 deviceOrientation: UIDevice.current.orientation.rawValue)
+            if let faceCrop, let faceOrientation {
+                metadata.faceCrop = [faceCrop.minX, faceCrop.minY, faceCrop.width, faceCrop.height]
+                metadata.faceWidth = 256
+                metadata.faceHeight = 256
+                metadata.faceOrientation = Int(faceOrientation.rawValue)
+            }
             files.append(CaptureFile(name: "frame.json", data: try JSONEncoder().encode(metadata)))
             let target = directory.appendingPathComponent(String(format: "%06d", index), isDirectory: true)
             let packet = files
@@ -142,6 +166,7 @@ final class TrueDepthRecording {
                 }.value
             })
             frames.append(features)
+            if faceCrop != nil { faceFrameCount += 1 }
             if depthTimestamp != nil { depthFrameCount += 1 }
         } catch {
             invalidate(error.localizedDescription)
@@ -158,8 +183,8 @@ final class TrueDepthRecording {
         }
         let duration = (frames.last?.timestamp ?? 0) - (frames.first?.timestamp ?? 0)
         let sample = MouthSample(id: id, label: label, frames: frames, captureSource: "TrueDepth")
-        let manifest = CaptureManifest(
-            schemaVersion: 1, sampleID: id, label: label, speakerID: Self.speakerID,
+        var manifest = CaptureManifest(
+            schemaVersion: 2, sampleID: id, label: label, speakerID: Self.speakerID,
             sessionID: sessionID, deviceModel: Self.deviceModel, operatingSystem: UIDevice.current.systemVersion,
             createdAt: createdAt, featureSchemaVersion: MouthFeatureSchema.version, featureNames: MouthFeatureSchema.names,
             frameCount: frames.count, depthFrameCount: depthFrameCount,
@@ -170,6 +195,8 @@ final class TrueDepthRecording {
             depthFormat: "Native resolution, unrectified Float32 little-endian metres; UInt8 mask 1=valid, 0=missing; zero placeholders require mask",
             coordinateConvention: "Matrices column-major; vertices face-local metres; RGB crop top-left native pixels; depth calibration reference dimensions preserved",
             mouthSelection: "v1: fixed first-frame lower-face vertices abs(x)<0.055, -0.080<y<-0.005 metres; projected bounds +25% each side; verify on device")
+        manifest.faceFrameCount = faceFrameCount
+        manifest.faceFormat = "PNG RGBA8 sRGB, 256x256, square full-mesh bounds +35%, upright, unmirrored; frame.faceOrientation records applied EXIF rotation"
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let files = [CaptureFile(name: "metadata.json", data: try encoder.encode(manifest)),
@@ -178,6 +205,47 @@ final class TrueDepthRecording {
         try await Task.detached(priority: .utility) { try CaptureArchive.write(files, to: target) }.value
         guard issues.isEmpty else { throw RecordingError.invalid(issues.joined(separator: " ")) }
         return sample
+    }
+
+    private func encodeFace(frame: ARFrame, face: ARFaceAnchor, cameraFromFace: simd_float4x4)
+        throws -> (data: Data, crop: CGRect, orientation: CGImagePropertyOrientation) {
+        func project(_ v: SIMD3<Float>) -> CGPoint? {
+            let p = cameraFromFace * SIMD4<Float>(v.x, v.y, v.z, 1)
+            guard p.z < -0.01 else { return nil }
+            let pixel = frame.camera.intrinsics * SIMD3<Float>(p.x / -p.z, -p.y / -p.z, 1)
+            guard pixel.x.isFinite, pixel.y.isFinite else { return nil }
+            return CGPoint(x: CGFloat(pixel.x), y: CGFloat(pixel.y))
+        }
+        let points = face.geometry.vertices.compactMap(project)
+        guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
+              let minY = points.map(\.y).min(), let maxY = points.map(\.y).max(),
+              let top = project(SIMD3<Float>(0, 0.05, 0)),
+              let bottom = project(SIMD3<Float>(0, -0.05, 0)) else {
+            throw RecordingError.invalid("Could not locate the whole face.")
+        }
+        let side = ceil(max(maxX - minX, maxY - minY) * 1.35)
+        let crop = CGRect(x: floor((minX + maxX - side) / 2),
+                          y: floor((minY + maxY - side) / 2), width: side, height: side)
+        let width = CVPixelBufferGetWidth(frame.capturedImage)
+        let height = CVPixelBufferGetHeight(frame.capturedImage)
+        guard side >= 64, CGRect(x: 0, y: 0, width: width, height: height).contains(crop) else {
+            throw RecordingError.invalid("Move back slightly and keep both eyes, nose, and mouth in view.")
+        }
+        // Derive the native-image quarter-turn from the projected anatomical up axis.
+        // This also works when UIDevice.orientation is unknown or face-up.
+        let dx = top.x - bottom.x, dy = top.y - bottom.y
+        let orientation: CGImagePropertyOrientation = abs(dy) >= abs(dx)
+            ? (dy < 0 ? .up : .down) : (dx > 0 ? .left : .right)
+        let ciCrop = CGRect(x: crop.minX, y: CGFloat(height) - crop.maxY, width: side, height: side)
+        let image = CIImage(cvPixelBuffer: frame.capturedImage).cropped(to: ciCrop)
+            .transformed(by: CGAffineTransform(translationX: -ciCrop.minX, y: -ciCrop.minY))
+            .oriented(orientation)
+            .transformed(by: CGAffineTransform(scaleX: 256 / side, y: 256 / side))
+        guard let data = context.pngRepresentation(of: image, format: .RGBA8,
+                                                   colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!) else {
+            throw RecordingError.invalid("Could not encode the face image.")
+        }
+        return (data, crop, orientation)
     }
 
     private func copyDepth(_ buffer: CVPixelBuffer) throws -> (values: Data, mask: Data) {

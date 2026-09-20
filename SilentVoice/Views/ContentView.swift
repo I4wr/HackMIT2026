@@ -27,11 +27,11 @@ struct ContentView: View {
                     .buttonStyle(.plain)
 
                     NavigationLink {
-                        RecognitionView()
+                        RecognitionModesView()
                     } label: {
                         HomeActionCard(
                             title: "Start silent speech",
-                            subtitle: "Record a word and hear the prediction",
+                            subtitle: "Transcribe a sentence or use offline commands",
                             systemImage: "waveform"
                         )
                     }

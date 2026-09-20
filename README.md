@@ -10,6 +10,14 @@ SilentVoice is an iOS SwiftUI prototype that turns silent mouth movements captur
 
 The simulator is useful for UI and integration work, but it cannot validate TrueDepth face tracking.
 
+## Local sentence recognition
+
+**Sentences** records up to ten seconds of silent speech and sends upright face
+images to a local Mac running Auto-AVSR. Review/edit the returned transcript and
+tap Speak. **Commands** keeps the existing calibrated offline word recognition.
+See [local inference setup and evaluation](docs/LocalInference.md) for the Python
+environment, model download, Mac connection, and experimental accuracy limits.
+
 ## Start here
 
 1. Open `SilentVoice.xcodeproj` in Xcode.
