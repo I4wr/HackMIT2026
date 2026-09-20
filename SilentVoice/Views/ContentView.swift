@@ -16,17 +16,6 @@ struct ContentView: View {
                     }
 
                     NavigationLink {
-                        CalibrationView()
-                    } label: {
-                        HomeActionCard(
-                            title: "Calibrate",
-                            subtitle: calibrationSubtitle,
-                            systemImage: "person.wave.2"
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    NavigationLink {
                         RecognitionModesView()
                     } label: {
                         HomeActionCard(
@@ -61,16 +50,6 @@ struct ContentView: View {
         return "\(total) calibration example\(total == 1 ? "" : "s") saved"
     }
 
-    private var calibrationSubtitle: String {
-        let parts = PhraseCatalog.words.map { phrase in
-            let count = viewModel.samples.filter { $0.label == phrase }.count
-            return "\(count)/\(PhraseCatalog.targetExampleCount)"
-        }
-        guard parts.count >= 2 else {
-            return parts.joined(separator: " · ")
-        }
-        return "Help \(parts[0]) · Water \(parts[1])"
-    }
 }
 
 private struct HomeActionCard: View {
