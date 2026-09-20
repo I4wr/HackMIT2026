@@ -55,6 +55,24 @@ final class FaceTracker: NSObject, ObservableObject, FaceTracking, @preconcurren
     private var runStartedAt: TimeInterval = 0
     private var rateWindowStart: TimeInterval?
     private var rateWindowCount = 0
+    private var recording: TrueDepthRecording?
+    private var recordingSessionID = UUID()
+
+    func beginRecording(label: String, datasetSplit: String = "unassigned") throws {
+        guard recording == nil, isFaceDetected else {
+            throw TrueDepthRecording.RecordingError.invalid("Position your face in view before recording.")
+        }
+        recording = try TrueDepthRecording(label: label, sessionID: recordingSessionID, datasetSplit: datasetSplit)
+    }
+
+    func finishRecording(cancelled: Bool = false) async throws -> MouthSample {
+        guard let take = recording else {
+            throw TrueDepthRecording.RecordingError.invalid("No recording is active.")
+        }
+        recording = nil
+        if cancelled { take.invalidate("Recording cancelled.") }
+        return try await take.finish()
+    }
 
     override init() {
         super.init()
@@ -114,6 +132,7 @@ final class FaceTracker: NSObject, ObservableObject, FaceTracking, @preconcurren
         }
         configuration.videoFormat = format
         clearFace()
+        recordingSessionID = UUID()
         runStartedAt = CACurrentMediaTime()
         status = .lookingForFace
         session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
@@ -128,6 +147,7 @@ final class FaceTracker: NSObject, ObservableObject, FaceTracking, @preconcurren
     }
 
     private func clearFace() {
+        recording?.invalidate("Face tracking was lost or interrupted during the take.")
         if !currentFeatures.isEmpty { currentFeatures = [] }
         if isFaceDetected { isFaceDetected = false }
         if latestFrame != nil { latestFrame = nil }
@@ -156,6 +176,7 @@ final class FaceTracker: NSObject, ObservableObject, FaceTracking, @preconcurren
         guard sampler.shouldEmit(at: frame.timestamp) else { return }
         // ARFrame.timestamp is monotonic uptime, in seconds, not wall-clock time.
         let sample = MouthFrame(timestamp: frame.timestamp, features: features)
+        recording?.append(frame: frame, face: face, features: sample)
         currentFeatures = features
         if !isFaceDetected { isFaceDetected = true }
         if status != .tracking { status = .tracking }

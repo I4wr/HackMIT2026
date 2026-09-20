@@ -17,5 +17,6 @@ xcuserdata/
 
 # Local sample captures
 sample-data/*.json
+!sample-data/feature_schema.json
 sample-data/*.mov
 sample-data/*.mp4

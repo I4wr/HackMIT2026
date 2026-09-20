@@ -5,20 +5,37 @@ struct CalibrationView: View {
     @StateObject private var capture = CaptureController()
     @State private var selectedPhrase = PhraseCatalog.phrases[0]
     @State private var captureTask: Task<Void, Never>?
+    @State private var datasetSplit = "training"
+    @State private var savedMessage: String?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                FaceCameraView()
+                    .frame(height: 240)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
                 Text("Phrase to mouth")
                     .font(.headline)
 
                 VStack(spacing: 8) {
-                    ForEach(PhraseCatalog.phrases, id: \.self) { phrase in
+                    ForEach(PhraseCatalog.recordingLabels, id: \.self) { phrase in
                         phraseRow(phrase)
                     }
                 }
 
                 progressSection
+                Picker("Recording purpose", selection: $datasetSplit) {
+                    Text("Training").tag("training")
+                    Text("Validation").tag("validation")
+                    Text("Test").tag("test")
+                }
+                .disabled(capture.phase.isBusy)
+                Text("Validation and test takes are saved separately from training. Record them in a later session. For REST, stay relaxed. For UNKNOWN, make unrelated expressions or mouth other phrases.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                if let savedMessage {
+                    Text(savedMessage).font(.footnote).foregroundStyle(.secondary)
+                }
 
                 if let message = viewModel.lastErrorMessage {
                     Text(message)
@@ -41,7 +58,7 @@ struct CalibrationView: View {
                 Button("Re-record") {
                     beginCapture(replacingLast: true)
                 }
-                .disabled(capture.phase.isBusy || examplesForSelectedPhrase.isEmpty)
+                .disabled(capture.phase.isBusy || examplesForSelectedPhrase.isEmpty || datasetSplit != "training")
             }
             .padding()
             .background(.bar)
@@ -64,7 +81,7 @@ struct CalibrationView: View {
         let target = PhraseCatalog.targetExampleCount
 
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Example \(count)/\(target)")
+            Text("Training examples \(count)/\(target)")
                 .font(.title3.bold())
                 .accessibilityLabel("Example \(count) of \(target)")
 
@@ -119,14 +136,21 @@ struct CalibrationView: View {
     private func beginCapture(replacingLast: Bool) {
         captureTask?.cancel()
         captureTask = Task {
-            let finished = await capture.capture()
-            guard finished, !Task.isCancelled else { return }
-            if replacingLast {
-                viewModel.removeLastSample(labeled: selectedPhrase)
+            let phrase = selectedPhrase
+            let split = datasetSplit
+            viewModel.lastErrorMessage = nil
+            savedMessage = nil
+            do {
+                let sample = try await capture.capture(tracker: viewModel.tracker, label: phrase, datasetSplit: split)
+                guard !Task.isCancelled else { return }
+                if split == "training" { viewModel.addSample(sample, replacingLast: replacingLast) }
+                if viewModel.lastErrorMessage == nil { savedMessage = "Saved \(split) recording for \(phrase)." }
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                viewModel.lastErrorMessage = error.localizedDescription
             }
-            viewModel.addSample(
-                MouthSample(label: selectedPhrase, frames: MockMouthSequence.frames())
-            )
         }
     }
 }

@@ -6,6 +6,7 @@ enum CapturePhase: Equatable {
     case idle
     case countdown(Int)
     case recording
+    case saving
 
     var isBusy: Bool {
         self != .idle
@@ -17,29 +18,32 @@ final class CaptureController: ObservableObject {
     @Published private(set) var phase: CapturePhase = .idle
 
     func capture(
+        tracker: FaceTracker,
+        label: String,
+        datasetSplit: String = "unassigned",
         countdownSeconds: Int = 3,
         recordingDuration: TimeInterval = 1.5
-    ) async -> Bool {
+    ) async throws -> MouthSample {
+        defer { phase = .idle }
         for remaining in stride(from: countdownSeconds, through: 1, by: -1) {
             phase = .countdown(remaining)
-            do {
-                try await Task.sleep(for: .seconds(1))
-            } catch {
-                phase = .idle
-                return false
-            }
+            try await Task.sleep(for: .seconds(1))
         }
 
+        try Task.checkCancellation()
+        try tracker.beginRecording(label: label, datasetSplit: datasetSplit)
         phase = .recording
         do {
             try await Task.sleep(for: .seconds(recordingDuration))
         } catch {
-            phase = .idle
-            return false
+            _ = try? await tracker.finishRecording(cancelled: true)
+            throw error
         }
 
-        phase = .idle
-        return true
+        phase = .saving
+        let sample = try await tracker.finishRecording()
+        try Task.checkCancellation()
+        return sample
     }
 
     func reset() {
@@ -58,6 +62,8 @@ struct CaptureStatusOverlay: View {
             overlay(title: "\(value)", subtitle: "Mouth the phrase after the countdown")
         case .recording:
             overlay(title: "Recording", subtitle: "Keep articulating")
+        case .saving:
+            overlay(title: "Saving", subtitle: "Finishing your recording")
         }
     }
 

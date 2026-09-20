@@ -19,16 +19,25 @@ final class AppViewModel: ObservableObject {
         speechOutput: SpeechOutput? = nil
     ) {
         self.tracker = tracker ?? FaceTracker()
-        self.classifier = classifier ?? MockClassifier()
+        self.classifier = classifier ?? DTWClassifier()
         self.sampleStore = sampleStore ?? SampleStore()
         self.speechOutput = speechOutput ?? SpeechOutput()
         loadSamples()
     }
 
-    func addSample(_ sample: MouthSample) {
-        samples.append(sample)
-        persistSamples()
-        classifier.train(samples: samples)
+    func addSample(_ sample: MouthSample, replacingLast: Bool = false) {
+        var updated = samples
+        if replacingLast, let index = updated.lastIndex(where: { $0.label == sample.label }) {
+            updated.remove(at: index)
+        }
+        updated.append(sample)
+        do {
+            try sampleStore.save(updated)
+            samples = updated
+            classifier.train(samples: samples)
+        } catch {
+            lastErrorMessage = "Could not save calibration samples: \(error.localizedDescription)"
+        }
     }
 
     @discardableResult
@@ -51,7 +60,8 @@ final class AppViewModel: ObservableObject {
 
     private func loadSamples() {
         do {
-            samples = try sampleStore.load()
+            // Earlier UI versions generated mock samples; never train live recognition on them.
+            samples = try sampleStore.load().filter { $0.captureSource == "TrueDepth" }
             classifier.train(samples: samples)
         } catch {
             lastErrorMessage = "Could not load calibration samples: \(error.localizedDescription)"

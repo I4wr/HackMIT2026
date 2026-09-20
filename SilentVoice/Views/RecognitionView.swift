@@ -75,7 +75,7 @@ struct RecognitionView: View {
                         .padding(12)
                 }
 
-            Text("Camera preview is a placeholder until TrueDepth capture is merged.")
+            Text("Keep your face visible and mouth the phrase after the countdown.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -134,9 +134,18 @@ struct RecognitionView: View {
     private func beginCapture() {
         captureTask?.cancel()
         captureTask = Task {
-            let finished = await capture.capture()
-            guard finished, !Task.isCancelled else { return }
-            viewModel.predict(frames: MockMouthSequence.frames())
+            viewModel.lastErrorMessage = nil
+            viewModel.latestPrediction = nil
+            do {
+                let sample = try await capture.capture(tracker: viewModel.tracker, label: "UNLABELED")
+                guard !Task.isCancelled else { return }
+                viewModel.predict(frames: sample.frames)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                viewModel.lastErrorMessage = error.localizedDescription
+            }
         }
     }
 }

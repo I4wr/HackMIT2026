@@ -7,4 +7,5 @@ enum PhraseCatalog {
     ]
 
     static let targetExampleCount = 20
+    static let recordingLabels = phrases + ["REST", "UNKNOWN"]
 }

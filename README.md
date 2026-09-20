@@ -32,6 +32,10 @@ Shared contracts are in `MouthSample.swift`, `Prediction.swift`, and `FaceTracke
 
 ## Integration contract
 
-The checked-in app uses `FaceTracker` and `MockClassifier`, so navigation, prediction flow, persistence, and speech can compile before the hardware tracker and real classifier land. Keep pull requests small and rebase feature branches after each merge to `main`.
+The app uses `FaceTracker` and `DTWClassifier`. Calibration and recognition capture real camera frames after a countdown. Calibration offers training, validation, and test recordings plus REST/UNKNOWN negatives; only training recordings enter the on-device classifier. Earlier mock calibration samples are excluded when loading. DTW thresholds still need tuning on real validation data.
+
+Each take saves timestamped RGB mouth PNGs, all face-mesh vertices, all named blendshapes, camera transforms/intrinsics, and available native depth with its own timestamp, mask, and calibration data. Archives live in the app container under `Documents/captures/<sample UUID>/`. See [TrueDepth capture format and device checks](docs/TrueDepth.md).
+
+Run `bash Scripts/run-capture-smoke.sh` and `bash Scripts/run-classifier-smoke.sh` for offline checks. These do not measure lip-reading accuracy.
 
 `SilentVoiceTests/` contains the first unit-test source. Person 4 should add the test target in Xcode when setting the project development team; teammates should not independently edit `project.pbxproj`.

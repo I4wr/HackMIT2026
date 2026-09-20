@@ -24,7 +24,7 @@ enum SampleIO {
             at: directory,
             includingPropertiesForKeys: nil
         )
-        .filter { $0.pathExtension.lowercased() == "json" }
+        .filter { $0.pathExtension.lowercased() == "json" && $0.lastPathComponent != "feature_schema.json" }
         .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
         return try urls.map { try loadSample(from: $0) }

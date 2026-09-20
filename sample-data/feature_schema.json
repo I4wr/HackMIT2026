@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "names": [
+    "jawOpen", "jawForward", "jawLeft", "jawRight",
+    "mouthClose", "mouthFunnel", "mouthPucker", "mouthLeft", "mouthRight",
+    "mouthSmileLeft", "mouthSmileRight", "mouthFrownLeft", "mouthFrownRight",
+    "mouthDimpleLeft", "mouthDimpleRight", "mouthStretchLeft", "mouthStretchRight",
+    "mouthRollLower", "mouthRollUpper", "mouthShrugLower", "mouthShrugUpper",
+    "mouthPressLeft", "mouthPressRight", "cheekPuff"
+  ],
+  "note": "Existing 24-value classifier contract. Archive frame.json additionally retains all ARKit blendshapes by name."
+}
