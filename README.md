@@ -1,6 +1,6 @@
 # SilentVoice
 
-SilentVoice is an iOS SwiftUI prototype that turns silent mouth movements captured by a TrueDepth camera into spoken phrases.
+SilentVoice is an iOS SwiftUI prototype that turns silent mouth movements captured by a TrueDepth camera into spoken command words.
 
 ## Requirements
 
@@ -32,7 +32,7 @@ Shared contracts are in `MouthSample.swift`, `Prediction.swift`, and `FaceTracke
 
 ## Integration contract
 
-The app uses `FaceTracker` and `DTWClassifier`. Calibration and recognition capture real camera frames after a countdown. Calibration offers training, validation, and test recordings plus REST/UNKNOWN negatives; only training recordings enter the on-device classifier. Earlier mock calibration samples are excluded when loading. DTW thresholds still need tuning on real validation data.
+The app uses `FaceTracker`, `DTWClassifier`, and a lightweight command-word language model. Calibration and recognition capture real camera frames after a countdown. Recognition first ranks visually plausible DTW candidates, then the language layer re-ranks close candidates and surfaces word suggestions from the closed word catalog. Accepted words can still speak fuller assistive output such as "I need water." Calibration offers training, validation, and test recordings plus REST/UNKNOWN negatives; only training recordings enter the on-device classifier. Earlier mock calibration samples are excluded when loading. DTW and language-assist thresholds still need tuning on real validation data.
 
 Each take saves timestamped RGB mouth PNGs, all face-mesh vertices, all named blendshapes, camera transforms/intrinsics, and available native depth with its own timestamp, mask, and calibration data. Archives live in the app container under `Documents/captures/<sample UUID>/`. See [TrueDepth capture format and device checks](docs/TrueDepth.md).
 

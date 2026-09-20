@@ -59,7 +59,7 @@ struct CaptureStatusOverlay: View {
         case .idle:
             EmptyView()
         case .countdown(let value):
-            overlay(title: "\(value)", subtitle: "Mouth the phrase after the countdown")
+            overlay(title: "\(value)", subtitle: "Mouth the word after the countdown")
         case .recording:
             overlay(title: "Recording", subtitle: "Keep articulating")
         case .saving:

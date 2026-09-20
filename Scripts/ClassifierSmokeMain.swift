@@ -116,11 +116,33 @@ struct ClassifierSmokeMain {
 
         let mock = MockClassifier()
         let mockPrediction = mock.predict(frames: [])
-        guard mockPrediction.accepted, mockPrediction.label == "I need help" else {
+        guard mockPrediction.accepted, mockPrediction.label == "help" else {
             fputs("FAIL: MockClassifier contract\n", stderr)
             exit(1)
         }
         print("MockClassifier OK for Person 4 UI wiring")
+
+        let languageModel = PhraseLanguageModel(phrases: ["help", "water"])
+        let visual = Prediction(
+            label: "UNKNOWN",
+            score: 0.58,
+            accepted: false,
+            candidates: [
+                Candidate(label: "water", distance: 0.72, score: 0.58),
+                Candidate(label: "help", distance: 0.80, score: 0.54),
+            ]
+        )
+        let assisted = languageModel.enhance(visual, acceptedContext: [])
+        guard assisted.suggestions.count == 2, assisted.suggestions.first?.label == "water" else {
+            fputs("FAIL: language suggestions should preserve visually plausible ranking\n", stderr)
+            exit(1)
+        }
+        let nextWords = languageModel.nextWordSuggestions(after: [])
+        guard Set(nextWords.map(\.label)) == Set(["help", "water"]) else {
+            fputs("FAIL: next-word suggestions for command words\n", stderr)
+            exit(1)
+        }
+        print("PhraseLanguageModel OK for assisted suggestions")
 
         print("PASS: Person 2 solo work complete (waiting on TrueDepth samples + app wiring).")
     }

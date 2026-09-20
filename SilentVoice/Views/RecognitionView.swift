@@ -13,9 +13,10 @@ struct RecognitionView: View {
 
                 if let prediction = viewModel.latestPrediction {
                     candidatesSection(prediction)
+                    suggestionsSection(prediction)
                     finalOutputSection(prediction)
                 } else {
-                    Text("Record a silent phrase to see candidates and the spoken output.")
+                    Text("Record a silent word to see candidates and the spoken output.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -76,7 +77,7 @@ struct RecognitionView: View {
                         .padding(12)
                 }
 
-            Text("Keep your face visible and mouth the phrase after the countdown.")
+            Text("Keep your face visible and mouth the word after the countdown.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -126,6 +127,34 @@ struct RecognitionView: View {
             Text(String(format: "Score %.2f", prediction.score))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func suggestionsSection(_ prediction: Prediction) -> some View {
+        let suggestions = prediction.suggestions.isEmpty
+            ? viewModel.nextWordSuggestions
+            : prediction.suggestions
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Assisted suggestions")
+                .font(.headline)
+
+            if suggestions.isEmpty {
+                Text("No suggestions")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(Array(suggestions.enumerated()), id: \.offset) { index, suggestion in
+                    SuggestionRow(
+                        rank: index + 1,
+                        suggestion: suggestion,
+                        isWinner: prediction.accepted && suggestion.label == prediction.label
+                    )
+                }
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -196,6 +225,38 @@ private struct CandidateRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Candidate \(rank), \(label), score \(String(format: "%.2f", score))")
+    }
+}
+
+private struct SuggestionRow: View {
+    let rank: Int
+    let suggestion: LanguageSuggestion
+    let isWinner: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("\(rank)")
+                .font(.headline.monospacedDigit())
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(suggestion.label)
+                    .font(.body.weight(isWinner ? .semibold : .regular))
+                HStack(spacing: 10) {
+                    Text(String(format: "combined %.2f", suggestion.combinedScore))
+                    Text(String(format: "visual %.2f", suggestion.visualScore))
+                    Text(String(format: "context %.2f", suggestion.languageScore))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if isWinner {
+                Image(systemName: "sparkle.magnifyingglass")
+                    .foregroundStyle(.blue)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Suggestion \(rank), \(suggestion.label), combined score \(String(format: "%.2f", suggestion.combinedScore))")
     }
 }
 

@@ -3,7 +3,7 @@ import SwiftUI
 struct CalibrationView: View {
     @EnvironmentObject private var viewModel: AppViewModel
     @StateObject private var capture = CaptureController()
-    @State private var selectedPhrase = PhraseCatalog.phrases[0]
+    @State private var selectedPhrase = PhraseCatalog.words[0]
     @State private var captureTask: Task<Void, Never>?
     @State private var datasetSplit = "training"
     @State private var savedMessage: String?
@@ -15,7 +15,7 @@ struct CalibrationView: View {
                     .frame(height: 240)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                 FaceDiagnosticsView(tracker: viewModel.tracker)
-                Text("Phrase to mouth")
+                Text("Word to mouth")
                     .font(.headline)
 
                 VStack(spacing: 8) {
@@ -31,7 +31,7 @@ struct CalibrationView: View {
                     Text("Test").tag("test")
                 }
                 .disabled(capture.phase.isBusy)
-                Text("Validation and test takes are saved separately from training. Record them in a later session. For REST, stay relaxed. For UNKNOWN, make unrelated expressions or mouth other phrases.")
+                Text("Validation and test takes are saved separately from training. Record them in a later session. For REST, stay relaxed. For UNKNOWN, make unrelated expressions or mouth other words.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 if let savedMessage {
@@ -91,7 +91,7 @@ struct CalibrationView: View {
                 total: Double(target)
             )
 
-            Text(count >= target ? "Target reached. Extra examples are still saved." : "Record a short silent articulation of the selected phrase.")
+            Text(count >= target ? "Target reached. Extra examples are still saved." : "Record a short silent articulation of the selected word.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }

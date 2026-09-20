@@ -13,6 +13,7 @@ struct Prediction: Equatable, Sendable {
     let score: Float
     let accepted: Bool
     let candidates: [Candidate]
+    let suggestions: [LanguageSuggestion]
 
     static let unknown = Prediction(label: "UNKNOWN", score: 0, accepted: false)
 
@@ -20,12 +21,14 @@ struct Prediction: Equatable, Sendable {
         label: String,
         score: Float,
         accepted: Bool,
-        candidates: [Candidate] = []
+        candidates: [Candidate] = [],
+        suggestions: [LanguageSuggestion] = []
     ) {
         self.label = label
         self.score = score
         self.accepted = accepted
         self.candidates = candidates
+        self.suggestions = suggestions
     }
 }
 
@@ -33,11 +36,30 @@ struct Candidate: Equatable, Sendable {
     let label: String
     let distance: Float
     let score: Float
+    /// Which query frames this template matched. Nil under `.whole` matching from
+    /// callers that predate it; populated by `DTWClassifier` for both strategies.
+    let alignment: DTWAlignment?
 
-    init(label: String, distance: Float, score: Float) {
+    init(label: String, distance: Float, score: Float, alignment: DTWAlignment? = nil) {
         self.label = label
         self.distance = distance
         self.score = score
+        self.alignment = alignment
+    }
+}
+
+/// Combined visual + language ranking for assistive suggestions.
+struct LanguageSuggestion: Equatable, Sendable {
+    let label: String
+    let visualScore: Float
+    let languageScore: Float
+    let combinedScore: Float
+
+    init(label: String, visualScore: Float, languageScore: Float, combinedScore: Float) {
+        self.label = label
+        self.visualScore = visualScore
+        self.languageScore = languageScore
+        self.combinedScore = combinedScore
     }
 }
 
@@ -52,12 +74,12 @@ final class MockClassifier: MouthClassifying {
 
     init(
         canned: Prediction = Prediction(
-            label: "I need help",
+            label: "help",
             score: 0.92,
             accepted: true,
             candidates: [
-                Candidate(label: "I need help", distance: 0.1, score: 0.92),
-                Candidate(label: "I need water", distance: 0.8, score: 0.55),
+                Candidate(label: "help", distance: 0.1, score: 0.92),
+                Candidate(label: "water", distance: 0.8, score: 0.55),
             ]
         )
     ) {

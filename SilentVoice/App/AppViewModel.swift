@@ -5,12 +5,15 @@ import Combine
 final class AppViewModel: ObservableObject {
     @Published private(set) var samples: [MouthSample] = []
     @Published var latestPrediction: Prediction?
+    @Published private(set) var acceptedPhraseContext: [String] = []
+    @Published private(set) var nextWordSuggestions: [LanguageSuggestion] = []
     @Published var lastErrorMessage: String?
 
     let tracker: FaceTracker
     let classifier: any MouthClassifying
     let speechOutput: SpeechOutput
     private let sampleStore: SampleStore
+    private let languageModel: PhraseLanguageModel
 
     init(
         tracker: FaceTracker? = nil,
@@ -22,6 +25,8 @@ final class AppViewModel: ObservableObject {
         self.classifier = classifier ?? DTWClassifier()
         self.sampleStore = sampleStore ?? SampleStore()
         self.speechOutput = speechOutput ?? SpeechOutput()
+        self.languageModel = PhraseLanguageModel(phrases: PhraseCatalog.words)
+        self.nextWordSuggestions = languageModel.nextWordSuggestions(after: [])
         loadSamples()
     }
 
@@ -50,12 +55,18 @@ final class AppViewModel: ObservableObject {
     }
 
     func predict(frames: [MouthFrame]) {
-        latestPrediction = classifier.predict(frames: frames)
+        let visualPrediction = classifier.predict(frames: frames)
+        latestPrediction = languageModel.enhance(
+            visualPrediction,
+            acceptedContext: acceptedPhraseContext
+        )
     }
 
     func speakLatestPrediction() {
         guard let prediction = latestPrediction, prediction.accepted else { return }
-        speechOutput.speak(prediction.label)
+        speechOutput.speak(PhraseCatalog.spokenOutput(for: prediction.label))
+        acceptedPhraseContext.append(prediction.label)
+        nextWordSuggestions = languageModel.nextWordSuggestions(after: [])
     }
 
     private func loadSamples() {

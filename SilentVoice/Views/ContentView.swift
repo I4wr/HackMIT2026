@@ -31,7 +31,7 @@ struct ContentView: View {
                     } label: {
                         HomeActionCard(
                             title: "Start silent speech",
-                            subtitle: "Record a phrase and hear the prediction",
+                            subtitle: "Record a word and hear the prediction",
                             systemImage: "waveform"
                         )
                     }
@@ -62,7 +62,7 @@ struct ContentView: View {
     }
 
     private var calibrationSubtitle: String {
-        let parts = PhraseCatalog.phrases.map { phrase in
+        let parts = PhraseCatalog.words.map { phrase in
             let count = viewModel.samples.filter { $0.label == phrase }.count
             return "\(count)/\(PhraseCatalog.targetExampleCount)"
         }
