@@ -9,6 +9,9 @@ xcuserdata/
 .build/
 .swiftpm/
 
+# Local classifier smoke binary
+.build-classifier-smoke/
+
 # macOS
 .DS_Store
 
