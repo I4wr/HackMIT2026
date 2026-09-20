@@ -1,0 +1,18 @@
+# Xcode user state and build products
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store
+
+# Local sample captures
+sample-data/*.json
+sample-data/*.mov
+sample-data/*.mp4
