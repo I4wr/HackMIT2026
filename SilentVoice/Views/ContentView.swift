@@ -20,7 +20,7 @@ struct ContentView: View {
                     } label: {
                         HomeActionCard(
                             title: "Start silent speech",
-                            subtitle: "Transcribe a sentence or use offline commands",
+                            subtitle: "Transcribe a silent sentence",
                             systemImage: "waveform"
                         )
                     }

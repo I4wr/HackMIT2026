@@ -2,29 +2,15 @@ import SwiftUI
 
 struct RecognitionModesView: View {
     @EnvironmentObject private var viewModel: AppViewModel
-    @AppStorage("SilentVoice.recognitionMode") private var mode = "Sentences"
 
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("Recognition mode", selection: $mode) {
-                Text("Sentences").tag("Sentences")
-                Text("Commands").tag("Commands")
-            }
-            .pickerStyle(.segmented)
-            .padding()
-            if mode == "Commands" {
-                RecognitionView()
-            } else {
-                SentenceRecognitionView(sentences: viewModel.sentences) { mode = "Commands" }
-            }
-        }
+        SentenceRecognitionView(sentences: viewModel.sentences)
     }
 }
 
 struct SentenceRecognitionView: View {
     @EnvironmentObject private var viewModel: AppViewModel
     @ObservedObject var sentences: SentenceRecognition
-    let switchToCommands: () -> Void
     @StateObject private var capture = CaptureController()
     @State private var captureTask: Task<Void, Never>?
     @State private var captureError: String?
@@ -65,7 +51,6 @@ struct SentenceRecognitionView: View {
                     if sentences.lastTake != nil {
                         Button("Retry recording") { retry() }.disabled(busy)
                     }
-                    Button("Use offline Commands", action: switchToCommands)
                 }
                 connectionSettings
                 FaceDiagnosticsView(tracker: viewModel.tracker)
