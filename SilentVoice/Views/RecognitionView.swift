@@ -82,11 +82,25 @@ struct RecognitionView: View {
     }
 
     private func candidatesSection(_ prediction: Prediction) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let rows: [(label: String, score: Float)] = {
+            if prediction.candidates.isEmpty {
+                return [(prediction.label, prediction.score)]
+            }
+            return prediction.candidates.prefix(3).map { ($0.label, $0.score) }
+        }()
+
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Top candidates")
                 .font(.headline)
 
-            CandidateRow(rank: 1, label: prediction.label, score: prediction.score, isWinner: true)
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                CandidateRow(
+                    rank: index + 1,
+                    label: row.label,
+                    score: row.score,
+                    isWinner: index == 0
+                )
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -97,10 +111,15 @@ struct RecognitionView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Final output")
                 .font(.headline)
-            Text(prediction.label)
+            Text(prediction.accepted ? prediction.label : "UNKNOWN")
                 .font(.largeTitle.bold())
                 .fixedSize(horizontal: false, vertical: true)
-            Text(prediction.accepted ? "Accepted" : "UNKNOWN")
+            if !prediction.accepted {
+                Text("Best match: \(prediction.label == "UNKNOWN" ? (prediction.candidates.first?.label ?? "none") : prediction.label)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Text(prediction.accepted ? "Accepted" : "UNKNOWN — signal did not confidently match")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(prediction.accepted ? .green : .red)
             Text(String(format: "Score %.2f", prediction.score))
