@@ -3,7 +3,7 @@ import Foundation
 /// Thin client for xAI Grok text-to-speech (`POST /v1/tts`).
 enum GrokTTSClient {
     static let endpoint = URL(string: "https://api.x.ai/v1/tts")!
-    static let defaultVoiceID = "eve"
+    static let defaultVoiceID = "rex"
 
     enum TTSError: LocalizedError {
         case missingAPIKey

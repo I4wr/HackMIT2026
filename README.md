@@ -14,7 +14,7 @@ The simulator is useful for UI and integration work, but it cannot validate True
 
 Accepted command words and sentence transcripts are spoken aloud through
 `SpeechOutput` when you tap **Speak**. When an xAI API key is present, the app uses **Grok Voice TTS**
-(`POST https://api.x.ai/v1/tts`, voice `eve`). Without a key, or if the request
+(`POST https://api.x.ai/v1/tts`, voice `rex`). Without a key, or if the request
 fails, it falls back to on-device `AVSpeechSynthesizer`.
 
 1. Create a key at [console.x.ai](https://console.x.ai/).
