@@ -7,6 +7,7 @@ cd "$ROOT"
 swiftc -module-cache-path "$OUT/module-cache" -o "$OUT/transcription-smoke" \
   SilentVoice/Classifier/MouthSample.swift \
   SilentVoice/Camera/CaptureArchive.swift \
+  SilentVoice/Services/ElevenLabsTTSClient.swift \
   SilentVoice/Services/SpeechOutput.swift \
   SilentVoice/Services/TranscriptionService.swift \
   SilentVoice/Services/SentenceRecognition.swift \

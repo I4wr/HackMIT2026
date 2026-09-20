@@ -6,7 +6,7 @@ OUT="$ROOT/.build-classifier-smoke"
 
 mkdir -p "$OUT"
 cd "$ROOT"
-swiftc -o "$OUT/classifier-smoke" \
+swiftc -module-cache-path "$OUT/module-cache" -o "$OUT/classifier-smoke" \
   "$CLASSIFIER"/*.swift \
   "$ROOT/Scripts/ClassifierSmokeMain.swift"
 
