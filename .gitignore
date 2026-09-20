@@ -23,6 +23,10 @@ __pycache__/
 *.pth
 training/artifacts/
 
+# Local secrets for Grok TTS (copy Secrets.example.plist → Secrets.plist)
+Configuration/Secrets.plist
+SilentVoice/Resources/Secrets.plist
+
 # Local sample captures
 sample-data/*.json
 !sample-data/feature_schema.json

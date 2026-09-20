@@ -17,6 +17,7 @@ private final class FakeTranscriber: Transcribing {
 private final class FakeSpeaker: SpeechSpeaking {
     var spoken: [String] = []
     func speak(_ text: String) { spoken.append(text) }
+    func stop() {}
 }
 
 private final class StubURLProtocol: URLProtocol, @unchecked Sendable {

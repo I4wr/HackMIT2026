@@ -10,13 +10,21 @@ SilentVoice is an iOS SwiftUI prototype that turns silent mouth movements captur
 
 The simulator is useful for UI and integration work, but it cannot validate TrueDepth face tracking.
 
-## Local sentence recognition
+## Spoken output (Grok TTS)
 
-**Sentences** records up to ten seconds of silent speech and sends upright face
-images to a local Mac running Auto-AVSR. Review/edit the returned transcript and
-tap Speak. **Commands** keeps the existing calibrated offline word recognition.
-See [local inference setup and evaluation](docs/LocalInference.md) for the Python
-environment, model download, Mac connection, and experimental accuracy limits.
+Accepted command words and sentence transcripts are spoken aloud through
+`SpeechOutput` when you tap **Speak**. When an xAI API key is present, the app uses **Grok Voice TTS**
+(`POST https://api.x.ai/v1/tts`, voice `eve`). Without a key, or if the request
+fails, it falls back to on-device `AVSpeechSynthesizer`.
+
+1. Create a key at [console.x.ai](https://console.x.ai/).
+2. Either:
+   - **Scheme env var:** Xcode → Product → Scheme → Edit Scheme → Run → Arguments → Environment Variables → `XAI_API_KEY` = your key, or
+   - **Local plist:** `cp SilentVoice/Resources/Secrets.example.plist SilentVoice/Resources/Secrets.plist` and paste the key (this file is gitignored).
+3. Rebuild and run. After recognition, tap **Speak** to hear the phrase with Grok (or on-device speech if no key).
+
+Do not commit real API keys.
+
 
 ## Start here
 
