@@ -2,8 +2,19 @@ import SwiftUI
 
 struct RecognitionView: View {
     @EnvironmentObject private var viewModel: AppViewModel
+
+    var body: some View {
+        RecognitionScreen(tracker: viewModel.tracker)
+    }
+}
+
+private struct RecognitionScreen: View {
+    @EnvironmentObject private var viewModel: AppViewModel
+    @ObservedObject var tracker: FaceTracker
     @StateObject private var capture = CaptureController()
     @State private var captureTask: Task<Void, Never>?
+    @State private var captureMessage: String?
+    @State private var captureIsError = false
 
     var body: some View {
         ScrollView {
@@ -19,6 +30,12 @@ struct RecognitionView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                if let message = captureMessage {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(captureIsError ? Color.red : Color.secondary)
+                }
+
                 if let message = viewModel.lastErrorMessage {
                     Text(message)
                         .font(.footnote)
@@ -32,7 +49,7 @@ struct RecognitionView: View {
             VStack(spacing: 12) {
                 RecordButton(
                     title: "Record",
-                    isEnabled: !capture.phase.isBusy
+                    isEnabled: canRecord
                 ) {
                     beginCapture()
                 }
@@ -53,15 +70,21 @@ struct RecognitionView: View {
             .background(.bar)
         }
         .overlay {
-            CaptureStatusOverlay(phase: capture.phase)
-        }
-        .onAppear {
-            viewModel.tracker.start()
+            CaptureStatusOverlay(phase: capture.phase, frameCount: capture.capturedFrameCount)
         }
         .onDisappear {
             captureTask?.cancel()
             capture.reset()
-            viewModel.tracker.stop()
+        }
+    }
+
+    private var canRecord: Bool {
+        guard !capture.phase.isBusy else { return false }
+        switch tracker.status {
+        case .permissionDenied, .requestingPermission, .failed(_):
+            return false
+        default:
+            return true
         }
     }
 
@@ -70,12 +93,8 @@ struct RecognitionView: View {
             FaceCameraView()
                 .frame(height: 280)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
-                .overlay(alignment: .topLeading) {
-                    FaceStatusBadge(tracker: viewModel.tracker)
-                        .padding(12)
-                }
 
-            Text("Camera preview is a placeholder until TrueDepth capture is merged.")
+            Text("Face the camera, mouth a phrase, then tap Record.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -133,30 +152,21 @@ struct RecognitionView: View {
 
     private func beginCapture() {
         captureTask?.cancel()
+        captureMessage = nil
+        captureIsError = false
         captureTask = Task {
-            let finished = await capture.capture()
-            guard finished, !Task.isCancelled else { return }
-            viewModel.predict(frames: MockMouthSequence.frames())
+            switch await capture.run(from: tracker) {
+            case .cancelled:
+                return
+            case .success(let frames, let warning):
+                viewModel.predict(frames: frames)
+                captureMessage = warning
+                captureIsError = false
+            case .failed(let message):
+                captureMessage = message
+                captureIsError = true
+            }
         }
-    }
-}
-
-private struct FaceStatusBadge: View {
-    @ObservedObject var tracker: FaceTracker
-
-    var body: some View {
-        let detected = tracker.isFaceDetected
-        return HStack(spacing: 8) {
-            Circle()
-                .fill(detected ? Color.green : Color.orange)
-                .frame(width: 8, height: 8)
-            Text(detected ? "Face detected" : "Looking for face")
-                .font(.caption.weight(.semibold))
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(.ultraThinMaterial, in: Capsule())
-        .accessibilityLabel(detected ? "Face detected" : "Looking for face")
     }
 }
 

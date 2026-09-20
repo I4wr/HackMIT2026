@@ -114,9 +114,9 @@ private struct LatestResultCard: View {
             Text("Latest output")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(prediction.label)
+            Text(prediction.accepted ? prediction.label : "UNKNOWN")
                 .font(.title3.bold())
-            Text(prediction.accepted ? "Accepted · \(scoreText)" : "Rejected · \(scoreText)")
+            Text(prediction.accepted ? "Accepted · \(scoreText)" : "UNKNOWN · \(scoreText)")
                 .font(.footnote)
                 .foregroundStyle(prediction.accepted ? Color.secondary : Color.red)
         }

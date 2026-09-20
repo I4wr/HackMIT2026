@@ -2,13 +2,26 @@ import SwiftUI
 
 struct CalibrationView: View {
     @EnvironmentObject private var viewModel: AppViewModel
+
+    var body: some View {
+        CalibrationScreen(tracker: viewModel.tracker)
+    }
+}
+
+private struct CalibrationScreen: View {
+    @EnvironmentObject private var viewModel: AppViewModel
+    @ObservedObject var tracker: FaceTracker
     @StateObject private var capture = CaptureController()
     @State private var selectedPhrase = PhraseCatalog.phrases[0]
     @State private var captureTask: Task<Void, Never>?
+    @State private var captureMessage: String?
+    @State private var captureIsError = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                cameraPreview
+
                 Text("Phrase to mouth")
                     .font(.headline)
 
@@ -19,6 +32,12 @@ struct CalibrationView: View {
                 }
 
                 progressSection
+
+                if let message = captureMessage {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(captureIsError ? Color.red : Color.secondary)
+                }
 
                 if let message = viewModel.lastErrorMessage {
                     Text(message)
@@ -33,7 +52,7 @@ struct CalibrationView: View {
             VStack(spacing: 12) {
                 RecordButton(
                     title: "Record",
-                    isEnabled: !capture.phase.isBusy
+                    isEnabled: canRecord
                 ) {
                     beginCapture(replacingLast: false)
                 }
@@ -41,13 +60,13 @@ struct CalibrationView: View {
                 Button("Re-record") {
                     beginCapture(replacingLast: true)
                 }
-                .disabled(capture.phase.isBusy || examplesForSelectedPhrase.isEmpty)
+                .disabled(!canRecord || examplesForSelectedPhrase.isEmpty)
             }
             .padding()
             .background(.bar)
         }
         .overlay {
-            CaptureStatusOverlay(phase: capture.phase)
+            CaptureStatusOverlay(phase: capture.phase, frameCount: capture.capturedFrameCount)
         }
         .onDisappear {
             captureTask?.cancel()
@@ -55,8 +74,30 @@ struct CalibrationView: View {
         }
     }
 
+    private var canRecord: Bool {
+        guard !capture.phase.isBusy else { return false }
+        switch tracker.status {
+        case .permissionDenied, .requestingPermission, .failed(_):
+            return false
+        default:
+            return true
+        }
+    }
+
     private var examplesForSelectedPhrase: [MouthSample] {
         viewModel.samples.filter { $0.label == selectedPhrase }
+    }
+
+    private var cameraPreview: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            FaceCameraView()
+                .frame(height: 240)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+
+            Text("Face the camera, then mouth the selected phrase.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private var progressSection: some View {
@@ -118,15 +159,23 @@ struct CalibrationView: View {
 
     private func beginCapture(replacingLast: Bool) {
         captureTask?.cancel()
+        captureMessage = nil
+        captureIsError = false
         captureTask = Task {
-            let finished = await capture.capture()
-            guard finished, !Task.isCancelled else { return }
-            if replacingLast {
-                viewModel.removeLastSample(labeled: selectedPhrase)
+            switch await capture.run(from: tracker) {
+            case .cancelled:
+                return
+            case .success(let frames, let warning):
+                if replacingLast {
+                    viewModel.removeLastSample(labeled: selectedPhrase)
+                }
+                viewModel.addSample(MouthSample(label: selectedPhrase, frames: frames))
+                captureMessage = warning
+                captureIsError = false
+            case .failed(let message):
+                captureMessage = message
+                captureIsError = true
             }
-            viewModel.addSample(
-                MouthSample(label: selectedPhrase, frames: MockMouthSequence.frames())
-            )
         }
     }
 }
