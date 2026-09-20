@@ -31,6 +31,15 @@ final class AppViewModel: ObservableObject {
         classifier.train(samples: samples)
     }
 
+    @discardableResult
+    func removeLastSample(labeled label: String) -> MouthSample? {
+        guard let index = samples.lastIndex(where: { $0.label == label }) else { return nil }
+        let removed = samples.remove(at: index)
+        persistSamples()
+        classifier.train(samples: samples)
+        return removed
+    }
+
     func predict(frames: [MouthFrame]) {
         latestPrediction = classifier.predict(frames: frames)
     }
