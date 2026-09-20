@@ -1,14 +1,70 @@
+import ARKit
 import SwiftUI
 
-/// Placeholder preview surface for the ARKit view Person 1 will provide.
+/// FaceCameraView() shares the app's tracker. Standalone callers may pass one.
 struct FaceCameraView: View {
+    @EnvironmentObject private var viewModel: AppViewModel
+    private let tracker: FaceTracker?
+
+    init(tracker: FaceTracker? = nil) {
+        self.tracker = tracker
+    }
+
     var body: some View {
-        ZStack {
+        TrackingCameraSurface(tracker: tracker ?? viewModel.tracker)
+    }
+}
+
+private struct TrackingCameraSurface: View {
+    @ObservedObject var tracker: FaceTracker
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
             Color.black
-            Image(systemName: "faceid")
-                .font(.system(size: 56))
-                .foregroundStyle(.white.opacity(0.8))
+            CameraPreview(session: tracker.session)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                Label(tracker.status.message,
+                      systemImage: tracker.isFaceDetected ? "faceid" : "camera")
+                if tracker.isFaceDetected {
+                    Text("\(tracker.framesPerSecond, specifier: "%.0f") fps · Jaw \(tracker.currentFeatures.first ?? 0, specifier: "%.2f")")
+                        .monospacedDigit()
+                }
+                if case .failed = tracker.status {
+                    Button("Retry camera") { tracker.start() }
+                        .buttonStyle(.bordered)
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.white)
+            .padding(10)
+            .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 10))
+            .padding(12)
         }
-        .accessibilityLabel("TrueDepth camera preview")
+        .clipped()
+        .onAppear {
+            if scenePhase == .active { tracker.start() }
+        }
+        .onDisappear { tracker.stop() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { tracker.start() } else { tracker.stop() }
+        }
+    }
+}
+
+private struct CameraPreview: UIViewRepresentable {
+    let session: ARSession
+
+    func makeUIView(context: Context) -> ARSCNView {
+        let view = ARSCNView(frame: .zero)
+        view.session = session
+        view.automaticallyUpdatesLighting = false
+        view.preferredFramesPerSecond = 30
+        return view
+    }
+
+    func updateUIView(_ view: ARSCNView, context: Context) {
+        if view.session !== session { view.session = session }
     }
 }
