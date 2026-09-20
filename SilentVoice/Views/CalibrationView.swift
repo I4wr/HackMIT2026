@@ -14,6 +14,7 @@ struct CalibrationView: View {
                 FaceCameraView()
                     .frame(height: 240)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
+                FaceDiagnosticsView(tracker: viewModel.tracker)
                 Text("Phrase to mouth")
                     .font(.headline)
 

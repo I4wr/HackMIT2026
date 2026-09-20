@@ -39,6 +39,7 @@ final class FaceTracker: NSObject, ObservableObject, FaceTracking, @preconcurren
     @Published private(set) var status: Status = .stopped
     @Published private(set) var framesPerSecond: Double = 0
     @Published private(set) var latestFrame: MouthFrame?
+    @Published private(set) var diagnostics: FaceDiagnostics?
 
     static let featureNames = MouthFeatureSchema.names
     static let featureSchemaVersion = MouthFeatureSchema.version
@@ -50,6 +51,7 @@ final class FaceTracker: NSObject, ObservableObject, FaceTracking, @preconcurren
     let session = ARSession()
     private let frameSubject = PassthroughSubject<MouthFrame, Never>()
     private var sampler = MouthFrameSampler()
+    private var diagnosticsSampler = FaceDiagnosticsSampler()
     private var wantsToRun = false
     private var requestID = UUID()
     private var runStartedAt: TimeInterval = 0
@@ -152,6 +154,8 @@ final class FaceTracker: NSObject, ObservableObject, FaceTracking, @preconcurren
         if isFaceDetected { isFaceDetected = false }
         if latestFrame != nil { latestFrame = nil }
         if framesPerSecond != 0 { framesPerSecond = 0 }
+        if diagnostics != nil { diagnostics = nil }
+        diagnosticsSampler = FaceDiagnosticsSampler()
         sampler.reset()
         rateWindowStart = nil
         rateWindowCount = 0
@@ -177,6 +181,9 @@ final class FaceTracker: NSObject, ObservableObject, FaceTracking, @preconcurren
         // ARFrame.timestamp is monotonic uptime, in seconds, not wall-clock time.
         let sample = MouthFrame(timestamp: frame.timestamp, features: features)
         recording?.append(frame: frame, face: face, features: sample)
+        if let snapshot = diagnosticsSampler.update(frame: frame, face: face, blendShapes: coefficients) {
+            diagnostics = snapshot
+        }
         currentFeatures = features
         if !isFaceDetected { isFaceDetected = true }
         if status != .tracking { status = .tracking }

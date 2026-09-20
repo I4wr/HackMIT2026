@@ -34,6 +34,25 @@ decodable but are excluded by the app's `captureSource` filter.
 
 ## Classifier contract
 
+### Live diagnostics
+
+Both Calibration and Recognition show a Live readings panel below the preview,
+including eight mouth-movement bars, colour-camera dimensions, delivered frame
+rate, camera-to-face distance, and depth availability. Expand **Depth, mesh & head
+movement** for depth dimensions, approximate valid-pixel coverage, median scene
+depth, the age of the inspected depth sample, distinct depth samples received per
+second, RGB exposure, mesh vertex count and relative yaw/pitch/roll.
+
+The panel updates at approximately 5 Hz without recording. Depth statistics use
+a grid of at most 64 × 48 pixels across the entire depth image, including the
+background; they are not mouth-only measurements or confidence scores. A sample
+older than 500 ms is marked stale and its coverage/distance values are hidden.
+Head angles use the first tracked pose as a reference. Tracking loss, stop or
+interruption clears the diagnostics and resets that reference. The feature and
+archive streams keep their existing sampling behavior.
+
+### Feature schema
+
 The 24-value feature schema remains version 1 to preserve compatibility. Ordered
 names are in `sample-data/feature_schema.json` and `MouthFeatureSchema.names`.
 Each `MouthFrame` has a monotonic ARKit timestamp and raw coefficients. Smoothing,

@@ -9,6 +9,7 @@ struct RecognitionView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 cameraPreview
+                FaceDiagnosticsView(tracker: viewModel.tracker)
 
                 if let prediction = viewModel.latestPrediction {
                     candidatesSection(prediction)

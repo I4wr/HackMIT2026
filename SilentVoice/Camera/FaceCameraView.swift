@@ -28,7 +28,7 @@ private struct TrackingCameraSurface: View {
                 Label(tracker.status.message,
                       systemImage: tracker.isFaceDetected ? "faceid" : "camera")
                 if tracker.isFaceDetected {
-                    Text("\(tracker.framesPerSecond, specifier: "%.0f") fps · Jaw \(tracker.currentFeatures.first ?? 0, specifier: "%.2f")")
+                    Text("\(tracker.framesPerSecond, specifier: "%.0f") fps · \(tracker.currentFeatures.count) movement features")
                         .monospacedDigit()
                 }
                 if case .failed = tracker.status {
